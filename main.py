@@ -1,72 +1,56 @@
 import re
+from pprint import pprint
 import csv
 
+PHONE_PATTERN = r'(\+7|8)*[\s\(]*(\d{3})[\)\s-]*(\d{3})[-]*(\d{2})[-]*(\d{2})[\s\(]*(доб\.)*[\s]*(\d+)*[\)]*'
+PHONE_SUB = r'+7(\2)-\3-\4-\5 \6\7'
 
-def read_file(file_name):
-    with open('phone_book_raw.csv') as f:
-        rows = csv.reader(f, delimiter=",")
-        contacts_list = list(rows)
-    return contacts_list
-
-
-def format_number(contacts_list):
-    number_pattern_raw = r'(\+7|8)(\s*)(\(*)(\d{3})(\)*)(\s*)' \
-                            r'(\-*)(\d{3})(\s*)(\-*)(\d{2})(\s*)(\-*)' \
-                            r'(\d{2})(\s*)(\(*)(доб)*(\.*)(\s*)(\d+)*(\)*)'
-    number_pattern_new = r'+7(\4)\8-\11-\14\15\17\18\19\20'
-    contacts_list_updated = list()
-    for card in contacts_list:
-        card_as_string = ','.join(card)
-        formatted_card = re.sub(number_pattern_raw, number_pattern_new, card_as_string)
-        card_as_list = formatted_card.split(',')
-        contacts_list_updated.append(card_as_list)
-    return contacts_list_updated
+# Чтение файла CSV
+with open("phone_book_raw.csv", encoding="utf-8") as f:
+    rows = csv.reader(f, delimiter=",")
+    contacts_list = list(rows)
+# pprint(contacts_list)
 
 
-def format_full_name(contacts_list):
-    name_pattern_raw = r'^([А-ЯЁа-яё]+)(\s*)(\,?)([А-ЯЁа-яё]+)' \
-                       r'(\s*)(\,?)([А-ЯЁа-яё]*)(\,?)(\,?)(\,?)'
-    name_pattern_new = r'\1\3\10\4\6\9\7\8'
-    contacts_list_updated = list()
-    for card in contacts_list:
-        card_as_string = ','.join(card)
-        formatted_card = re.sub(name_pattern_raw, name_pattern_new, card_as_string)
-        card_as_list = formatted_card.split(',')
-        contacts_list_updated.append(card_as_list)
-    return contacts_list_updated
+# Основная функция перебора по шаблону
+def main(contact_list: list):
+    new_list = list()
+    for item in contact_list:
+        full_name = ' '.join(item[:3]).split(' ')
+        result = [full_name[0], full_name[1], full_name[2], item[3], item[4],
+                  re.sub(PHONE_PATTERN, PHONE_SUB, item[5]),
+                  item[6]]
+        new_list.append(result)
+    return union(new_list)
 
 
-def join_duplicates(contacts_list):
-    for i in contacts_list:
-        for j in contacts_list:
-            if i[0] == j[0] and i[1] == j[1] and i is not j:
-                if i[2] is '':
-                    i[2] = j[2]
-                if i[3] is '':
-                    i[3] = j[3]
-                if i[4] is '':
-                    i[4] = j[4]
-                if i[5] is '':
-                    i[5] = j[5]
-                if i[6] is '':
-                    i[6] = j[6]
-    contacts_list_updated = list()
-    for card in contacts_list:
-        if card not in contacts_list_updated:
-            contacts_list_updated.append(card)
-    return contacts_list_updated
+# Функция перебора списка от одинаковых и пустых записях
+def union(contacts: list):
+
+    for contact in contacts:
+        first_name = contact[0]
+        last_name = contact[1]
+        for new_contact in contacts:
+            new_first_name = new_contact[0]
+            new_last_name = new_contact[1]
+            if first_name == new_first_name and last_name == new_last_name:
+                if contact[2] == "": contact[2] = new_contact[2]
+                if contact[3] == "": contact[3] = new_contact[3]
+                if contact[4] == "": contact[4] = new_contact[4]
+                if contact[5] == "": contact[5] = new_contact[5]
+                if contact[6] == "": contact[6] = new_contact[6]
+
+    result_list = list()
+    for i in contacts:
+        if i not in result_list:
+            result_list.append(i)
+
+    return result_list
+
+# pprint(main(contacts_list))
 
 
-def write_file(contacts_list):
-    with open("phone_book_formatted.csv", "w") as f:
-        data_writer = csv.writer(f, delimiter=',')
-        data_writer.writerows(contacts_list)
-
-
-if __name__ == '__main__':
-    contacts = read_file('phone_book_raw.csv')
-    contacts = format_number(contacts)
-    contacts = format_full_name(contacts)
-    contacts = join_duplicates(contacts)
-    contacts[0][2] = 'patronymic'
-    write_file(contacts)
+#  Запись файла в формате CSV
+with open("phonebook.csv", "w", encoding="utf-8") as f:
+    datawriter = csv.writer(f, delimiter=',')
+    datawriter.writerows(main(contacts_list))
